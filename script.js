@@ -6,43 +6,44 @@
 
   var categories = [];
 
-  // STEP 0: On page load, show the home page
   DC.showHome = function () {
     DC.sendGetRequest(CATEGORIES_URL, buildAndShowHomeHTML);
   };
 
-  // STEP 1: Build and show home HTML snippet
   function buildAndShowHomeHTML(categoriesData) {
-    // STEP 2: Choose a random category
     categories = categoriesData;
     var randomCategory = chooseRandomCategory(categories);
 
-    // STEP 3: Load home snippet and replace {{randomCategoryShortName}}
-    DC.sendGetRequest("snippets/home-snippet.html", function (homeHTML) {
+    DC.sendGetRequest("home-snippet.html", function (homeHTML) {
       homeHTML = homeHTML.replace("{{randomCategoryShortName}}", randomCategory.short_name);
-
-      // STEP 4: Insert into main page
       document.getElementById("main-content").innerHTML = homeHTML;
     }, false);
   }
 
-  // Choose a random category from the list
   function chooseRandomCategory(cats) {
     var randomIndex = Math.floor(Math.random() * cats.length);
     return cats[randomIndex];
   }
 
-  // Load menu items for a category
   DC.loadMenuItems = function (shortName) {
     if (shortName === 'all') {
-      // Show all categories as tabs
       DC.sendGetRequest(CATEGORIES_URL, function (cats) {
+        categories = cats;
         showAllCategories(cats);
       });
     } else {
-      DC.sendGetRequest(MENU_ITEMS_BASE_URL + shortName + ".json", function (items) {
-        showMenuItems(items, shortName);
-      });
+      if (categories.length === 0) {
+        DC.sendGetRequest(CATEGORIES_URL, function (cats) {
+          categories = cats;
+          DC.sendGetRequest(MENU_ITEMS_BASE_URL + shortName + ".json", function (items) {
+            showMenuItems(items, shortName);
+          });
+        });
+      } else {
+        DC.sendGetRequest(MENU_ITEMS_BASE_URL + shortName + ".json", function (items) {
+          showMenuItems(items, shortName);
+        });
+      }
     }
   };
 
@@ -51,7 +52,7 @@
     cats.forEach(function (cat) {
       html += '<li><a href="#" onclick="$dc.loadMenuItems(\'' + cat.short_name + '\'); return false;">' + cat.name + '</a></li>';
     });
-    html += '</ul></div><div class="col-md-9"><div id="items-container" class="row"></div></div></div>';
+    html += '</ul></div><div class="col-md-9"><div id="items-container" class="row"><p>Select a category.</p></div></div></div>';
     document.getElementById("main-content").innerHTML = html;
   }
 
@@ -62,7 +63,6 @@
       html += '<li' + active + '><a href="#" onclick="$dc.loadMenuItems(\'' + cat.short_name + '\'); return false;">' + cat.name + '</a></li>';
     });
     html += '</ul></div><div class="col-md-9"><div id="items-container" class="row">';
-
     if (!items || items.length === 0) {
       html += '<p>No items found.</p>';
     } else {
@@ -74,12 +74,10 @@
         html += '</div></div>';
       });
     }
-
     html += '</div></div></div>';
     document.getElementById("main-content").innerHTML = html;
   }
 
-  // Load home on start
   document.addEventListener("DOMContentLoaded", function () {
     DC.showHome();
   });
